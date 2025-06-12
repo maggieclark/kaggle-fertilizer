@@ -34,6 +34,11 @@ train = train %>%
   select(!c(`Soil Type`,`Crop Type`)) %>% 
   cbind(dummies)
 
+# convert text categories to integers
+
+train$`Fertilizer Name` <-
+  as.numeric(as.factor(train$`Fertilizer Name`)) - 1
+
 
 ### train ###
 # default booster is gbtree (tree-based)
@@ -53,18 +58,25 @@ test_x = train %>%
   dplyr::select(!c(id, fold, `Fertilizer Name`)) %>% 
   as.matrix()
 
+test_y = train %>% 
+  filter(fold == 5) %>% 
+  dplyr::select(`Fertilizer Name`) %>% 
+  as.matrix()
+
 # baseline
 # 
 
-mod <- xgboost(data = train_x, 
-  label = train_y, 
-  nrounds = 10, 
-  objective = "multi:softprob",
-  params = list(num_class=7))
+# want to use softprob and make multiple predictions
+mod <- xgboost(data = train_x,
+               label = train_y,
+               params = list(num_class=7, 
+                             objective = "multi:softmax"),
+               nrounds = 10)
 
 yhat = predict(mod, test_x, validate_features = TRUE)
 
-sqrt(mean((log(1+yhat)-log(1+fold5$Calories))^2))
+# this is just basic accuracy for now
+sum(yhat==test_y)/length(yhat)
 
 #
 #
